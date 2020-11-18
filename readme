@@ -1,10 +1,13 @@
-python模块源码和flask及其三方库地址：
+python模块源码和flask及其三方库源码地址：
+链接：https://pan.baidu.com/s/1oktrse4ZVPm53Iy4r8-6zw 
+提取码：q6p5 
+
 目录中文件说明：
-1、flaskDep.tar ：python的三方库源码，主要是flask及其依赖库；
+1、flaskDep.tar ：python的三方库源码，主要是flask及其依赖库源码；
 2、Python-3.6.10.tar ：python的源码，用来交叉编译出Python；
 3、pythonMod.tar ：python中的默认模块库，主要是c程序，需要先用交叉编译链进行交叉编译并安装，然后将其头文件和库文件添加到python编译时候的Makefile中；
 4、python3AndFlaskInstall.tar ：已经编译好的Python及其模块及其flask三方库环境，将其拷贝到rk3399上的/data目录，解压，然后添加环境就可以直接使用python及flask
-5、flask-video-streaming： flask的应用例子：直接执行python3 app.py即可运行；
+5、flask-video-streaming： flask的应用例子：在rk3399上部署好python及flask之后，直接执行python3 app.py即可运行；
 
 一、编译python2
 1、在rk3399开发环境所在的虚拟机中下载python2源码：wget https://www.python.org/ftp/python/2.7.9/Python-2.7.9.tgz；
