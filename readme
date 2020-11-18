@@ -1,0 +1,93 @@
+python模块源码和flask及其三方库地址：
+目录中文件说明：
+1、flaskDep.tar ：python的三方库源码，主要是flask及其依赖库；
+2、Python-3.6.10.tar ：python的源码，用来交叉编译出Python；
+3、pythonMod.tar ：python中的默认模块库，主要是c程序，需要先用交叉编译链进行交叉编译并安装，然后将其头文件和库文件添加到python编译时候的Makefile中；
+4、python3AndFlaskInstall.tar ：已经编译好的Python及其模块及其flask三方库环境，将其拷贝到rk3399上的/data目录，解压，然后添加环境就可以直接使用python及flask
+5、flask-video-streaming： flask的应用例子：直接执行python3 app.py即可运行；
+
+一、编译python2
+1、在rk3399开发环境所在的虚拟机中下载python2源码：wget https://www.python.org/ftp/python/2.7.9/Python-2.7.9.tgz；
+2、解压源码tar -zxvf Python-2.7.9.tgz； cd Python-2.7.9/；
+3、配置：./configure --host=$host --build=arm  --disable-ipv6 --prefix=`pwd`/build ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptmx=no  ac_cv_have_long_long_format=yes ac_cv_file__dev_ptc=no
+4、make &&make install;
+5、出错：
+make[1]: Leaving directory '/home/hao/emd_dev/Python-2.7.9'
+Parser/pgen ./Grammar/Grammar Include/graminit.h Python/graminit.c
+Parser/pgen: 2: Parser/pgen: Syntax error: "(" unexpected
+Makefile:629: recipe for target 'Include/graminit.h' failed
+make: *** [Include/graminit.h] Error 2
+解决办法：
+把文件Python-2.7.9/Include/graminit.h打开会发现最顶层有一排是空的,在上面加上#include<stdio.h>
+
+二、安装python2
+1、在rk3399开发板上新建文件夹/data/python2 ;
+2、将Python-2.7.9编译出来的的bin和lib目录上传到rk3399开发板上的/data/python2目录；
+3、添加 PATH=/data/python2/bin:${PATH};export PATH
+4、添加 PYTHONHOME=/data/python2/;export PYTHONHOME;
+
+
+三、编译python3（在虚拟机上编译，最好先用源码编译安装本机的python3，即执行./configure;make;make install;然后重新配置./configure 后面的参数进行交叉编译）
+将aarch64-linux-gnu的路径加入PATH；
+建立build文件夹,mkdir build；然后配置：./configure CC=aarch64-linux-gnu-gcc --host=aarch64-linux-gnu  --build=aarch64  --disable-ipv6 --prefix=`pwd`/build ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptmx=no  ac_cv_have_long_long_format=yes ac_cv_file__dev_ptc=no
+
+执行编译make ;出现下面这些问题：
+The necessary bits to build these optional modules were not found:
+_bz2                  _curses               _curses_panel
+_dbm                  _gdbm                 _lzma
+_sqlite3              _ssl                  _tkinter
+readline              zlib
+
+缺少的模块编译：首先执行cd ./EmdPrj/Modules/;source config_rk3399Pro_env.sh；主要将交叉编译链的路径添加到PATH，并export CC AR RANLIB LD等；
+（下面这些模块源码都在压缩包pythonMod.tar里面）
+1、缺少zlib模块：zlib交叉编译：CC=aarch64-linux-gnu-gcc ;export CC; mkdir build;./configure --prefix=`pwd`/build;
+2、缺少_bz2模块：bzip2交叉编译：新建build目录；修改Makefile:
+CC=aarch64-linux-gnu-gcc
+AR=aarch64-linux-gnu-ar
+RANLIB=aarch64-linux-gnu-ranlib
+PREFIX=/home/hao/emd_dev/pythonMod/bzip2-1.0.6/build
+CFLAGS=-fPIC -Wall -Winline -O2 -g $(BIGFILES)
+3、缺少_curses模块和_curses_panel模块：ncurses-5.9编译：./configure CC=aarch64-linux-gnu-gcc --host=arm-linux  --prefix=`pwd`/build --with-shared
+vim include/curses.tail 定位到104行，去除104行后面的注释：104 extern NCURSES_EXPORT(bool)    mouse_trafo (int*, int*, bool);   /* generated */
+4、缺少_gdbm模块：gdbm-1.14.1编译：./configure CC=aarch64-linux-gnu-gcc --host=arm-linux  --prefix=`pwd`/build  --enable-shared
+5、缺少_lzma模块：iblzma编译，下载xz-5.2.4.tar.gz解压，并执行./configure CC=aarch64-linux-gnu-gcc --host=arm-linux  --prefix=`pwd`/build  --enable-shared
+6、缺少_sqlite3模块：sqlite-autoconf-3310100编译：./configure CC=aarch64-linux-gnu-gcc --host=arm-linux  --prefix=`pwd`/build  --enable-shared
+7、缺少_ssl模块：openssl-1.1.1编译：./config no-asm -shared --prefix=`pwd`/build ；然后vi Makefile 删除-m64
+8、缺少readline模块：readline-8.0编译：./configure CC=aarch64-linux-gnu-gcc --host=arm-linux  --prefix=`pwd`/build  --enable-shared;
+
+最后就剩_dbm  模块和_tkinter模块这两个模块没有编译进去，由于flask并不需要这两个模块，因此不需要编译；
+编译完这些之后，在Python-3.6.10的Makefile中加入上面编译的各个模块的头文件和库文件的目录：
+CONFIGURE_CPPFLAGS=	-I/home/hao/emd_dev/rk3399Pro_dev_env/aarch64-linux-gnu/libc/usr/include/ -I/home/hao/emd_dev/pythonMod/zlib-1.2.11/build/include -I/home/hao/emd_dev/pythonMod/bzip2-1.0.6/build/include -I/home/hao/emd_dev/pythonMod/ncurses-5.9/include -I/home/hao/emd_dev/pythonMod/gdbm-1.14.1/build/include -I/home/hao/emd_dev/pythonMod/xz-5.2.4/build/include -I/home/hao/emd_dev/pythonMod/sqlite-autoconf-3310100/build/include -I/home/hao/emd_dev/pythonMod/openssl-1.1.1/build/include -I/home/hao/emd_dev/pythonMod/readline-8.0/build/include
+CONFIGURE_LDFLAGS=	-L/home/hao/emd_dev/pythonMod/zlib-1.2.11/build/lib -L/home/hao/emd_dev/pythonMod/bzip2-1.0.6/build/lib -L/home/hao/emd_dev/pythonMod/ncurses-5.9/lib -L/home/hao/emd_dev/pythonMod/gdbm-1.14.1/build/lib -L/home/hao/emd_dev/pythonMod/xz-5.2.4/build/lib -L/home/hao/emd_dev/pythonMod/sqlite-autoconf-3310100/build/lib -L/home/hao/emd_dev/pythonMod/openssl-1.1.1/build/lib -L/home/hao/emd_dev/pythonMod/readline-8.0/build/lib
+
+然后执行编译安装：make&& make install;
+然后将生成的build/lib和build/bin上传到rk3399的/data/python3中；
+
+四、python三方库编译（在ubuntu虚拟机上编译）：
+（三方库源码在flaskDep.tar压缩包里）
+1、mkdir /opt/arm_python；
+2、PYTHONPATH="/opt/arm_python/lib/python3.6/site-packages/" ;export PYTHONPATH ;
+3、分别进入flaskDep目录的各个文件夹中（click-6.1 Flask-1.1.2 itsdangerous-1.1.0 jinja MarkupSafe-1.1.1 Werkzeug-1.0.0）执行python3 setup.py install --prefix=/opt/arm_python；会在/opt/arm_python/lib/python3.6/site-packages目录下生成click-6.1-py3.6.egg、Flask-1.1.2-py3.6.egg、Jinja2-3.0.0a1-py3.6.egg、MarkupSafe-1.1.1-py3.6-linux-x86_64.egg、Werkzeug-1.0.0-py3.6.egg、itsdangerous-1.1.0-py3.6.egg等文件夹或压缩文件
+4、分别将生成的库拷贝到rk3399中的/data/python3/lib/python3.6/site-packages/下，例如：/opt/arm_python/lib/python3.6/site-packages/click-6.1-py3.6.egg/click/ 拷贝到/data/python3/lib/python3.6/site-packages/
+（itsdangerous-1.1.0-py3.6.egg是一个压缩包，可以在windows下直接解压，里面有itsdangerous包）
+
+五、直接用编译好的环境安装（里面是已经编译好的Python和三方库）
+直接安装：将python3AndFlaskInstall.tar 上传到rk3399上/data目录下，并解压，然后添加环境
+添加 PATH=/data/python3/bin:${PATH};export PATH
+添加 PYTHONHOME=/data/python3/;export PYTHONHOME;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
